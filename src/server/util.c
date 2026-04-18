@@ -3,6 +3,18 @@
 #include <libsocket.h>
 #include <stdio.h>
 
+const char *memallocerrorstr = "Memory allocation failed. Application terminated.";
+
+bool issockconnected(const Socket *socket)
+{
+    char tmp;
+    ssize_t avail = socket_recv(socket, &tmp, sizeof(tmp), RECV_FLAG_PEEK);
+
+    if (avail > 0) return true;
+    else if (avail < 0 && socket_getlasterror() == TemporaryUnavailable) return true;
+    else return false;
+}
+
 void handlesockerr(const char *funcname)
 {
     printf("%s error: %s. Application aborted.\n", funcname, socket_strerror(socket_getlasterror()));
@@ -12,13 +24,13 @@ void handlesockerr(const char *funcname)
 void *malloc_s(size_t size)
 {
     void *ret = malloc(size);
-    if (!ret) { puts("Memory allocation failed. Application terminated."); abort(); }
+    if (!ret) { puts(memallocerrorstr); abort(); }
     return ret;
 }
 
 void *realloc_s(void *ptr, size_t size)
 {
     void *ret = realloc(ptr, size);
-    if (!ret) { puts("Memory allocation failed. Application terminated."); abort(); }
+    if (!ret) { puts(memallocerrorstr); abort(); }
     return ret;
 }
