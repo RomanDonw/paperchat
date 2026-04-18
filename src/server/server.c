@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "util.h"
+#include "../util.h"
 
 Socket **cls = NULL;
 size_t cls_count = 0;

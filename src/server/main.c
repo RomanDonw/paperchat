@@ -3,7 +3,7 @@
 #include <getopt.h>
 
 #include "server.h"
-#include "util.h"
+#include "../util.h"
 
 int main(int argc, char *argv[])
 {
