@@ -1,12 +1,8 @@
-#ifndef PROCESSCONNECTIONS_H
-#define PROCESSCONNECTIONS_H
+#ifndef SERVER_H
+#define SERVER_H
 
 #include <libsocket.h>
 
-Socket **clients = NULL;
-size_t clients_count = 0;
-
-void processconnections(const Socket *serv);
-void closeall(void);
+void server(const Socket *serv);
 
 #endif

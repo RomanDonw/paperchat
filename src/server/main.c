@@ -2,11 +2,8 @@
 #include <libsocket.h>
 #include <getopt.h>
 
-void handlesockerr(const char *funcname)
-{
-    printf("%s error: %s. Application aborted.\n", funcname, socket_strerror(socket_getlasterror()));
-    abort();
-}
+#include "server.h"
+#include "util.h"
 
 int main(int argc, char *argv[])
 {
@@ -35,8 +32,9 @@ int main(int argc, char *argv[])
     if (!socket_listen(serv, 5)) handlesockerr("socket_listen");
 
     printf("Opened server at %s:%d.\n", addr, port);
+    puts("Press Enter to stop the server.");
 
-    
+    server(serv);
 
     if (!socket_close(serv)) handlesockerr("socket_close");
 
