@@ -41,6 +41,8 @@ bool acceptconn(const Socket *serv)
     Socket *cl = socket_accept(serv);
     if (!cl) return false;
 
+    puts("accepted!");
+
     cls = (Socket **)realloc_s(cls, sizeof(Socket *) * (cls_count + 1));
     cls[cls_count] = cl;
     cls_count++;
@@ -49,6 +51,8 @@ bool acceptconn(const Socket *serv)
     if (!socket_ioctl(cl, NonBlockingIO, &enable)) handlesockerr("socket_ioctl(NonBlockingIO, true)");
     enable = true;
     if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &enable, sizeof(enable))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
+
+    puts("accepted conn");
 
     return true;
 }
