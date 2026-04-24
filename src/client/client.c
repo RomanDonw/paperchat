@@ -15,6 +15,7 @@ void *recvloop(void *arg)
 		char msg[1024];
 		socket_recv(cl, msg, 1023, RECV_NOFLAGS);
 		msg[1023] = '\0';
+		puts(msg);
 	}
 
 	return NULL;
@@ -25,16 +26,12 @@ void client(const Socket *cl)
 	pthread_t thr_rcv;
 	pthread_create(&thr_rcv, NULL, recvloop, &cl);
 
+	char line[256];
 	while (enabled)
 	{
-		char *line = NULL;
-		size_t len;
-		if (getline(&line, &len, stdin) > 0)
-		{
-			socket_send(cl, line, len);
-		}
-		if (line) free(line);
+		if (!feof(stdin) && fgets(line, 256, stdin)) socket_send(cl, line, strlen(line), SEND_NOFLAGS);
 	}
 
+	enabled = false;
 	pthread_join(thr_rcv, NULL);
 }

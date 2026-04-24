@@ -50,8 +50,14 @@ int main(int argc, char *argv[])
     Socket *cl = socket_open(IPv4, Stream, TCP);
     if (!cl) handlesockerr("socket_open");
 
+    IPv4Address ipaddr;
+    if (!socket_parseaddr(&ipaddr, IPv4, addr)) handlesockerr("socket_parseaddr");
+
+    SocketIPv4Address saddr;
+    if (!socket_packsockaddr(&saddr, IPv4, &ipaddr, port)) handlesockerr("socket_packsockaddr");
+
     printf("Connecting to %s:%d with username \"%s\"...\n", addr, port, username);
-    if (!socket_connect(cl, addr, port)) handlesockerr("socket_connect");
+    if (!socket_connect(cl, &saddr, sizeof(saddr))) handlesockerr("socket_connect");
     puts("Connected!");
 
     client(cl);

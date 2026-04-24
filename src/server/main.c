@@ -28,7 +28,13 @@ int main(int argc, char *argv[])
     Socket *serv = socket_open(IPv4, Stream, TCP);
     if (!serv) handlesockerr("socket_open");
 
-    if (!socket_bind(serv, addr, port)) handlesockerr("socket_bind");
+    IPv4Address ipaddr;
+    if (!socket_parseaddr(&ipaddr, IPv4, addr)) handlesockerr("socket_parseaddr");
+
+    SocketIPv4Address saddr;
+    if (!socket_packsockaddr(&saddr, IPv4, &ipaddr, port)) handlesockerr("socket_packsockaddr");
+
+    if (!socket_bind(serv, &saddr, sizeof(saddr))) handlesockerr("socket_bind");
     if (!socket_listen(serv, 5)) handlesockerr("socket_listen");
 
     printf("Opened server at %s:%d.\n", addr, port);

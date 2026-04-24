@@ -38,7 +38,7 @@ void server(const Socket *serv)
 
 bool acceptconn(const Socket *serv)
 {
-    Socket *cl = socket_accept(serv);
+    Socket *cl = socket_accept(serv, NULL, NULL);
     if (!cl) return false;
 
     puts("accepted!");
@@ -86,6 +86,6 @@ void broadcast(const char *data, size_t len)
         printf("Broadcast message: ");
         for (size_t j = 0; j < len; j++) putchar(data[j]);
 
-        socket_send(cl, data, len);
+        socket_send(cl, data, len, SEND_NOFLAGS);
     }
 }
