@@ -9,12 +9,12 @@ Socket **cls = NULL;
 size_t cls_count = 0;
 
 bool acceptconn(const Socket *serv);
-void broadcast(const char *data, size_t len);
+void broadcast(const char *data, size_t len, const Socket **ingrsocs, size_t ignrsockscount);
 void cleanconns(void);
 
 void server(const Socket *serv)
 {
-    while (getc(stdin) == -1)
+    while (true)
     {
         while (acceptconn(serv));
 
@@ -28,7 +28,7 @@ void server(const Socket *serv)
             {
                 char *msg = malloc_s(sizeof(char) * avail);
                 socket_recv(cl, msg, avail, RECV_NOFLAGS);
-                broadcast(msg, avail);
+                broadcast(msg, avail, &cl, 1);
             }
         }
 
@@ -71,21 +71,36 @@ void cleanconns(void)
             new_cls[new_cls_count] = cl;
             new_cls_count++;
         }
+        else
+        {
+            // output address of disconnected socket, that need to be saved in custom wrapper ClientSocket struct.
+            puts("client disconnected");
+        }
     }
 
     cls = new_cls;
     cls_count = new_cls_count;
 }
 
-void broadcast(const char *data, size_t len)
+void broadcast(const char *data, size_t len, const Socket **ignrsocks, size_t ignrsockscount)
 {
+    printf("Broadcast message: ");
+    for (size_t j = 0; j < len; j++) putchar(data[j]);
+
     for (size_t i = 0; i < cls_count; i++)
     {
         Socket *cl = cls[i];
 
-        printf("Broadcast message: ");
-        for (size_t j = 0; j < len; j++) putchar(data[j]);
-
+        if (ignrsocks && ignrsockscount > 0)
+        {
+            bool skipsock = false;
+            for (size_t j = 0; j < ignrsockscount; j++)
+            {
+                if (ignrsocks[j] == cl) { skipsock = true; break; }
+            }
+            if (skipsock) continue;
+        }
+        
         socket_send(cl, data, len, SEND_NOFLAGS);
     }
 }

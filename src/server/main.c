@@ -28,6 +28,9 @@ int main(int argc, char *argv[])
     Socket *serv = socket_open(IPv4, Stream, TCP);
     if (!serv) handlesockerr("socket_open");
 
+    int nonblock = true;
+    if (!socket_ioctl(serv, NonBlockingIO, &nonblock)) handlesockerr("socket_ioctl(NonBlockingIO)");
+
     IPv4Address ipaddr;
     if (!socket_parseaddr(&ipaddr, IPv4, addr)) handlesockerr("socket_parseaddr");
 
