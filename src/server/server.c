@@ -5,11 +5,17 @@
 
 #include "../util.h"
 
-Socket **cls = NULL;
-size_t cls_count = 0;
+struct
+{
+    Socket *sock;
+    SocketIPv4Address addr;
+} typedef ClientSocket;
+
+ClientSocket *clients = NULL;
+size_t clientscount = 0;
 
 bool acceptconn(const Socket *serv);
-void broadcast(const char *data, size_t len, Socket **ingrsocs, size_t ignrsockscount);
+void broadcast(const char *data, size_t len, const ClientSocket *ignrsocs, size_t ignrsockscount);
 void cleanconns(void);
 
 void server(const Socket *serv)
@@ -18,17 +24,16 @@ void server(const Socket *serv)
     {
         while (acceptconn(serv));
 
-        for (size_t i = 0; i < cls_count; i++)
-        {
-            Socket *cl = cls[i];
-            
+        for (size_t i = 0; i < clientscount; i++)
+        {            
             unsigned long avail;
-            socket_ioctl(cl, AvailableDataToRead, &avail);
+            socket_ioctl(clients[i].sock, AvailableDataToRead, &avail);
             if (avail > 0)
             {
                 char *msg = malloc_s(sizeof(char) * avail);
-                socket_recv(cl, msg, avail, SOCKET_RECV_NOFLAGS);
-                broadcast(msg, avail, &cl, 1);
+                socket_recv(clients[i].sock, msg, avail, SOCKET_RECV_NOFLAGS);
+                broadcast(msg, avail, &clients[i], 1);
+                free(msg);
             }
         }
 
@@ -43,14 +48,14 @@ bool acceptconn(const Socket *serv)
 
     puts("accepted!");
 
-    cls = (Socket **)realloc_s(cls, sizeof(Socket *) * (cls_count + 1));
-    cls[cls_count] = cl;
-    cls_count++;
+    clients = (ClientSocket *)realloc_s(clients, sizeof(ClientSocket) * (clientscount + 1));
+    clients[clientscount].sock = cl;
+    clientscount++;
 
     bool enable = true;
-    if (!socket_ioctl(cl, NonBlockingIO, &enable)) handlesockerr("socket_ioctl(NonBlockingIO, true)");
-    enable = true;
-    if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &enable, sizeof(enable))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
+    //if (!socket_ioctl(cl, NonBlockingIO, &enable)) handlesockerr("socket_ioctl(NonBlockingIO, true)");
+    int keepaliveconn = true;
+    if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &keepaliveconn, sizeof(keepaliveconn))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
 
     puts("accepted conn");
 
@@ -59,17 +64,16 @@ bool acceptconn(const Socket *serv)
 
 void cleanconns(void)
 {
-    Socket **new_cls = NULL;
-    size_t new_cls_count = 0;
+    ClientSocket *newclients = NULL;
+    size_t newclientscount = 0;
 
-    for (size_t i = 0; i < cls_count; i++)
+    for (size_t i = 0; i < clientscount; i++)
     {
-        Socket *cl = cls[i];
-        if (issockconnected(cl))
+        if (issockconnected(clients[i].sock))
         {
-            new_cls = (Socket **)realloc_s(new_cls, sizeof(Socket *) * (new_cls_count + 1));
-            new_cls[new_cls_count] = cl;
-            new_cls_count++;
+            newclients = (ClientSocket *)realloc_s(newclients, sizeof(ClientSocket) * (newclientscount + 1));
+            newclients[newclientscount] = clients[i];
+            newclientscount++;
         }
         else
         {
@@ -78,8 +82,9 @@ void cleanconns(void)
         }
     }
 
-    cls = new_cls;
-    cls_count = new_cls_count;
+    free(clients);
+    clients = newclients;
+    clientscount = newclientscount;
 }
 
 void broadcast(const char *data, size_t len, Socket **ignrsocks, size_t ignrsockscount)
@@ -87,16 +92,14 @@ void broadcast(const char *data, size_t len, Socket **ignrsocks, size_t ignrsock
     printf("Broadcast message: ");
     for (size_t j = 0; j < len; j++) putchar(data[j]);
 
-    for (size_t i = 0; i < cls_count; i++)
+    for (size_t i = 0; i < clientscount; i++)
     {
-        Socket *cl = cls[i];
-
         if (ignrsocks && ignrsockscount > 0)
         {
             bool skipsock = false;
             for (size_t j = 0; j < ignrsockscount; j++)
             {
-                if (ignrsocks[j] == cl) { skipsock = true; break; }
+                if (ignrsocks[j] == clients[i]) { skipsock = true; break; }
             }
             if (skipsock) continue;
         }
