@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "../util.h"
+
 bool enabled = true;
 
 void *recvloop(void *arg)
@@ -13,7 +15,7 @@ void *recvloop(void *arg)
 	while (enabled)
 	{
 		char msg[1024];
-		socket_recv(cl, msg, 1023, RECV_NOFLAGS);
+		if (!socket_recv(cl, msg, 1023, RECV_NOFLAGS)) break;
 		msg[1023] = '\0';
 		puts(msg);
 	}
