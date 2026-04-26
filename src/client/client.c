@@ -13,7 +13,7 @@ void *recvloop(void *arg)
 	while (enabled)
 	{
 		char msg[1024];
-		socket_recv(cl, msg, 1023, RECV_NOFLAGS);
+		socket_recv(cl, msg, 1023, SOCKET_RECV_NOFLAGS);
 		msg[1023] = '\0';
 		puts(msg);
 	}
@@ -29,7 +29,7 @@ void client(const Socket *cl)
 	char line[256];
 	while (enabled)
 	{
-		if (!feof(stdin) && fgets(line, 256, stdin)) socket_send(cl, line, strlen(line), SEND_NOFLAGS);
+		if (!feof(stdin) && fgets(line, 256, stdin)) socket_send(cl, line, strlen(line), SOCKET_SEND_NOFLAGS);
 	}
 
 	enabled = false;

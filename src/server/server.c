@@ -9,7 +9,7 @@ Socket **cls = NULL;
 size_t cls_count = 0;
 
 bool acceptconn(const Socket *serv);
-void broadcast(const char *data, size_t len, const Socket **ingrsocs, size_t ignrsockscount);
+void broadcast(const char *data, size_t len, Socket **ingrsocs, size_t ignrsockscount);
 void cleanconns(void);
 
 void server(const Socket *serv)
@@ -27,7 +27,7 @@ void server(const Socket *serv)
             if (avail > 0)
             {
                 char *msg = malloc_s(sizeof(char) * avail);
-                socket_recv(cl, msg, avail, RECV_NOFLAGS);
+                socket_recv(cl, msg, avail, SOCKET_RECV_NOFLAGS);
                 broadcast(msg, avail, &cl, 1);
             }
         }
@@ -47,7 +47,7 @@ bool acceptconn(const Socket *serv)
     cls[cls_count] = cl;
     cls_count++;
 
-    int enable = true;
+    bool enable = true;
     if (!socket_ioctl(cl, NonBlockingIO, &enable)) handlesockerr("socket_ioctl(NonBlockingIO, true)");
     enable = true;
     if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &enable, sizeof(enable))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
@@ -82,7 +82,7 @@ void cleanconns(void)
     cls_count = new_cls_count;
 }
 
-void broadcast(const char *data, size_t len, const Socket **ignrsocks, size_t ignrsockscount)
+void broadcast(const char *data, size_t len, Socket **ignrsocks, size_t ignrsockscount)
 {
     printf("Broadcast message: ");
     for (size_t j = 0; j < len; j++) putchar(data[j]);
@@ -101,6 +101,6 @@ void broadcast(const char *data, size_t len, const Socket **ignrsocks, size_t ig
             if (skipsock) continue;
         }
         
-        socket_send(cl, data, len, SEND_NOFLAGS);
+        socket_send(cl, data, len, SOCKET_SEND_NOFLAGS);
     }
 }
