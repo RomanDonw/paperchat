@@ -46,8 +46,6 @@ bool acceptconn(const Socket *serv)
     Socket *cl = socket_accept(serv, NULL, NULL);
     if (!cl) return false;
 
-    puts("accepted!");
-
     clients = (ClientSocket *)realloc_s(clients, sizeof(ClientSocket) * (clientscount + 1));
     clients[clientscount].sock = cl;
     clientscount++;
@@ -57,7 +55,7 @@ bool acceptconn(const Socket *serv)
     int keepaliveconn = true;
     if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &keepaliveconn, sizeof(keepaliveconn))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
 
-    puts("accepted conn");
+    puts("accepted!");
 
     return true;
 }
@@ -87,7 +85,7 @@ void cleanconns(void)
     clientscount = newclientscount;
 }
 
-void broadcast(const char *data, size_t len, Socket **ignrsocks, size_t ignrsockscount)
+void broadcast(const char *data, size_t len, const ClientSocket *ignrsocks, size_t ignrsockscount)
 {
     printf("Broadcast message: ");
     for (size_t j = 0; j < len; j++) putchar(data[j]);
@@ -99,11 +97,11 @@ void broadcast(const char *data, size_t len, Socket **ignrsocks, size_t ignrsock
             bool skipsock = false;
             for (size_t j = 0; j < ignrsockscount; j++)
             {
-                if (ignrsocks[j] == clients[i]) { skipsock = true; break; }
+                if (ignrsocks[j].sock == clients[i].sock) { skipsock = true; break; }
             }
             if (skipsock) continue;
         }
         
-        socket_send(cl, data, len, SOCKET_SEND_NOFLAGS);
+        socket_send(clients[i].sock, data, len, SOCKET_SEND_NOFLAGS);
     }
 }
