@@ -5,24 +5,48 @@
 
 #include "../util.h"
 
+#define USERNAME_MAXLEN 32
+
 struct
 {
     Socket *sock;
-    SocketIPv4Address addr;
-} typedef ClientSocket;
 
-ClientSocket *clients = NULL;
+    SocketIPv4Address sockaddr;
+    char addrstr[IPV4ADDRSTRSIZE];
+    unsigned short port;
+
+    char username[USERNAME_MAXLEN + 1];
+} typedef Client;
+
+Client *clients = NULL;
 size_t clientscount = 0;
 
-bool acceptconn(const Socket *serv);
-void broadcast(const char *data, size_t len, const ClientSocket *ignrsocs, size_t ignrsockscount);
+Client *acceptconn(const Socket *serv);
+void broadcast(const char *data, size_t len, const Client *ignrsocs, size_t ignrsockscount);
 void cleanconns(void);
 
 void server(const Socket *serv)
 {
     while (true)
     {
-        while (acceptconn(serv));
+        Client *cl;
+        while (cl = acceptconn(serv))
+        {
+            //puts("in accept conn");
+
+            /*
+            bool enable = true;
+            if (!socket_ioctl(cl->sock, NonBlockingIO, &enable)) handlesockerr("socket_ioctl(NonBlockingIO, true)");
+            int keepaliveconn = true;
+            if (!socket_setopt(cl->sock, SocketLevel, Socket_KeepAliveConnection, &keepaliveconn, sizeof(keepaliveconn))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
+            */
+
+            ssize_t readbytes = socket_recv(cl->sock, cl->username, USERNAME_MAXLEN, SOCKET_RECV_NOFLAGS);
+            if (readbytes <= 0) continue;
+            cl->username[readbytes] = '\0';
+
+            flushrecvbuff(cl->sock);
+        }
 
         for (size_t i = 0; i < clientscount; i++)
         {            
@@ -30,10 +54,18 @@ void server(const Socket *serv)
             socket_ioctl(clients[i].sock, AvailableDataToRead, &avail);
             if (avail > 0)
             {
-                char *msg = malloc_s(sizeof(char) * avail);
-                socket_recv(clients[i].sock, msg, avail, SOCKET_RECV_NOFLAGS);
-                broadcast(msg, avail, &clients[i], 1);
-                free(msg);
+                char *recvmsg = malloc_s(avail + 1);
+                socket_recv(clients[i].sock, recvmsg, avail, SOCKET_RECV_NOFLAGS);
+                recvmsg[avail] = '\0';
+
+                size_t sendmsgsz = avail + USERNAME_MAXLEN + 8 + 1;
+                char *sendmsg = malloc_s(sendmsgsz);
+                size_t sendmsglen = sprintf_s(sendmsg, sendmsgsz, "[%s]: %s", clients[i].username, recvmsg);
+
+                broadcast(sendmsg, sendmsglen, &clients[i], 1);
+
+                free(sendmsg);
+                free(recvmsg);
             }
         }
 
@@ -41,43 +73,43 @@ void server(const Socket *serv)
     }
 }
 
-bool acceptconn(const Socket *serv)
+Client *acceptconn(const Socket *serv)
 {
-    Socket *cl = socket_accept(serv, NULL, NULL);
-    if (!cl) return false;
+    SocketIPv4Address addr;
+    socklen_t addrsz = sizeof(addr);
+    Socket *cl = socket_accept(serv, &addr, &addrsz);
+    if (!cl) return NULL;
+    if (addrsz != sizeof(addr)) { puts("addrsz != sizeof(addr)"); abort(); }
 
-    clients = (ClientSocket *)realloc_s(clients, sizeof(ClientSocket) * (clientscount + 1));
+    IPv4Address ipaddr;
+    unsigned short port;
+    if (!socket_unpacksockaddr(&addr, IPv4, &ipaddr, &port)) handlesockerr("socket_unpacksockaddr");
+
+    clients = (Client *)realloc_s(clients, sizeof(Client) * (clientscount + 1));
     clients[clientscount].sock = cl;
-    clientscount++;
+    clients[clientscount].sockaddr = addr;
+    clients[clientscount].port = port;
+    if (!socket_addrtostr(&addr, IPv4, clients[clientscount].addrstr, sizeof(clients[clientscount].addrstr))) handlesockerr("socket_addrtostr");
 
-    bool enable = true;
-    //if (!socket_ioctl(cl, NonBlockingIO, &enable)) handlesockerr("socket_ioctl(NonBlockingIO, true)");
-    int keepaliveconn = true;
-    if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &keepaliveconn, sizeof(keepaliveconn))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
+    printf("accecpted client %s:%d\n", clients[clientscount].addrstr, clients[clientscount].port);
 
-    puts("accepted!");
-
-    return true;
+    return &clients[clientscount++];
 }
 
 void cleanconns(void)
 {
-    ClientSocket *newclients = NULL;
+    Client *newclients = NULL;
     size_t newclientscount = 0;
 
     for (size_t i = 0; i < clientscount; i++)
     {
         if (issockconnected(clients[i].sock))
         {
-            newclients = (ClientSocket *)realloc_s(newclients, sizeof(ClientSocket) * (newclientscount + 1));
+            newclients = (Client *)realloc_s(newclients, sizeof(Client) * (newclientscount + 1));
             newclients[newclientscount] = clients[i];
             newclientscount++;
         }
-        else
-        {
-            // output address of disconnected socket, that need to be saved in custom wrapper ClientSocket struct.
-            puts("client disconnected");
-        }
+        else printf("disconnected client %s:%d\n", clients[i].addrstr, clients[i].port);
     }
 
     free(clients);
@@ -85,7 +117,7 @@ void cleanconns(void)
     clientscount = newclientscount;
 }
 
-void broadcast(const char *data, size_t len, const ClientSocket *ignrsocks, size_t ignrsockscount)
+void broadcast(const char *data, size_t len, const Client *ignrsocks, size_t ignrsockscount)
 {
     printf("Broadcast message: ");
     for (size_t j = 0; j < len; j++) putchar(data[j]);

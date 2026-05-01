@@ -6,11 +6,12 @@
 #include "../util.h"
 #include "client.h"
 
+#define USERNAME_MAXLEN 32
+
 int main(int argc, char *argv[])
 {
     char *addr = NULL;
-    const size_t MAX_USERNAME_LENGTH = 255;
-    char username[MAX_USERNAME_LENGTH];
+    char username[USERNAME_MAXLEN + 1];
     bool hasusername = false;
     unsigned short port = 12780;
 
@@ -24,8 +25,8 @@ int main(int argc, char *argv[])
                 break;
 
             case 'n':
-                memcpy(username, optarg, MAX_USERNAME_LENGTH);
-                username[MAX_USERNAME_LENGTH] = '\0';
+                memcpy(username, optarg, USERNAME_MAXLEN);
+                username[USERNAME_MAXLEN] = '\0';
                 hasusername = true;
                 break;
 
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 
     if (!hasusername)
     {
-        puts("Not specified required parameter -n <username up to 255 bytes>.");
+        puts("Not specified required parameter -n <username up to 32 bytes>.");
         return 1;
     }
 
@@ -52,13 +53,19 @@ int main(int argc, char *argv[])
 
     IPv4Address ipaddr;
     if (!socket_parseaddr(&ipaddr, IPv4, addr)) handlesockerr("socket_parseaddr");
-
     SocketIPv4Address saddr;
     if (!socket_packsockaddr(&saddr, IPv4, &ipaddr, port)) handlesockerr("socket_packsockaddr");
+
+    //bool nonblock = true;
+    //if (!socket_ioctl(cl, NonBlockingIO, &nonblock)) handlesockerr("socket_ioctl(NonBlockingIO)");
+    int keepalvconn = true;
+    if (!socket_setopt(cl, SocketLevel, Socket_KeepAliveConnection, &keepalvconn, sizeof(keepalvconn))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
 
     printf("Connecting to %s:%d with username \"%s\"...\n", addr, port, username);
     if (!socket_connect(cl, &saddr, sizeof(saddr))) handlesockerr("socket_connect");
     puts("Connected!");
+
+    if (!socket_send(cl, username, USERNAME_MAXLEN, SOCKET_SEND_NOFLAGS)) handlesockerr("socket_send");
 
     client(cl);
 

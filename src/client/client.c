@@ -14,10 +14,18 @@ void *recvloop(void *arg)
 
 	while (enabled)
 	{
-		char msg[1024];
-		if (!socket_recv(cl, msg, 1023, SOCKET_RECV_NOFLAGS)) break;
-		msg[1023] = '\0';
-		puts(msg);
+		ssize_t avail = socket_recv(cl, NULL, 0, SOCKET_RECV_FLAG_PEEK);
+		if (avail <= 0) { enabled = false; break; }
+		
+		char *msg = malloc_s(avail + 1);
+
+		ssize_t readbytes = socket_recv(cl, msg, avail, SOCKET_RECV_NOFLAGS);
+		if (readbytes <= 0) { enabled = false; break; }
+
+		msg[readbytes] = '\0';
+		printf("%s", msg);
+
+		free(msg);
 	}
 
 	return NULL;

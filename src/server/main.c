@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[])
 {
-    char *addr = "0.0.0.0";
+    char *addr = "127.0.0.1";
     unsigned short port = 12780;
 
     int p;
@@ -28,12 +28,13 @@ int main(int argc, char *argv[])
     Socket *serv = socket_open(IPv4, Stream, TCP);
     if (!serv) handlesockerr("socket_open");
 
-    int nonblock = true;
+    bool nonblock = true;
     if (!socket_ioctl(serv, NonBlockingIO, &nonblock)) handlesockerr("socket_ioctl(NonBlockingIO)");
+    int keepalvconn = true;
+    if (!socket_setopt(serv, SocketLevel, Socket_KeepAliveConnection, &keepalvconn, sizeof(keepalvconn))) handlesockerr("socket_setopt(SocketLevel, Socket_KeepAliveConnection)");
 
     IPv4Address ipaddr;
     if (!socket_parseaddr(&ipaddr, IPv4, addr)) handlesockerr("socket_parseaddr");
-
     SocketIPv4Address saddr;
     if (!socket_packsockaddr(&saddr, IPv4, &ipaddr, port)) handlesockerr("socket_packsockaddr");
 
